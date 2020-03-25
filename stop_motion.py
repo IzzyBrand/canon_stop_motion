@@ -2,6 +2,7 @@ import os
 import sys
 import glob
 import numpy as np
+import subprocess
 from canon import Canon
 from matplotlib import pyplot as plt
 from matplotlib.animation import FuncAnimation
@@ -11,7 +12,12 @@ class StopMotion:
     def __init__(self):
         self.change_scene('scene')
         print(self.N)
-        self.canon = Canon()
+        try:
+            self.canon = Canon()
+        except Exception as e:
+            print(e)
+            print('Failed to connect to camera!')
+            self.canon = None
         self.alpha = 0.95
 
     def print_header(self):
@@ -19,10 +25,11 @@ class StopMotion:
             Use the keyboard. Type a command and then press enter.
 
             q - quit
-            p — preview
+            p - preview
             s - save a frame
             v - view previous photo
             d - delete previous photo
+            r - render the photos into a video
             n <name> - create a new scene. for example "n trip"
 
             Next image:\t{}
@@ -129,8 +136,17 @@ class StopMotion:
             self.scene = new_scene_name
             self.N = 0
 
+    def render(self):
+        command = ['ffmpeg',
+                   '-i', '{}/%04d.jpg'.format(self.scene),
+                   '-c:v', 'libx264',
+                   '-vf', 'fps=25,format=yuv420p',
+                   '{}/out.mp4'.format(self.scene)]
+        subprocess.Popen(command)
+
     def get_command(self):
         raw = input()
+        if raw == '': return
         first_letter = raw.lower()[0]
 
         if first_letter == 'q':
@@ -144,6 +160,8 @@ class StopMotion:
             self.view_prev_frame()
         elif first_letter == 'd':
             self.delete_frame()
+        elif first_letter == 'r':
+            self.render()
         elif first_letter == 'n':
             words = raw.split()
             if len(words) > 1:

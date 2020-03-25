@@ -1,7 +1,9 @@
 *.ipynb
+*.pyc
 .DS_Store
 __pycache__/*
-*/*.jpg
+*.jpg
+*.mp4
 venv/*
 
 
