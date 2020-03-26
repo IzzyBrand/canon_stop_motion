@@ -14,19 +14,27 @@ class StopMotion:
         print(self.N)
         try:
             self.canon = Canon()
+            self.canon.setup_preview()
         except Exception as e:
             print(e)
             print('Failed to connect to camera!')
             self.canon = None
         self.alpha = 0.95
 
+    def start_preview(self):
+        self.fig, _ = plt.subplots()
+        self.fig.canvas.mpl_connect('key_press_event', self.get_command)
+        self.preview()
+        plt.show()
+        self.canon.exit()
+
     def print_header(self):
         print("""
-            Use the keyboard. Type a command and then press enter.
+            Use the keyboard. Type a command.
 
             q - quit
             p - preview
-            s - save a frame
+            f - tave a frame
             v - view previous photo
             d - delete previous photo
             r - render the photos into a video
@@ -94,34 +102,14 @@ class StopMotion:
         return preview
 
     def preview(self):
-        if self.canon.setup_preview():
-            print("""
-                Opened preview. Use the keyboard.
-                p - refresh preview
-                up - increase transparency
-                down - decrease transparency
-                q - quit preview
-                """)
-            fig, ax = plt.subplots()
+        plt.imshow(self.get_transparency_preview())
+        self.fig.canvas.draw()
 
-            def press(event):
-                sys.stdout.flush()
-                print(event.key)
-                if event.key == 'p':
-                    plt.imshow(self.get_transparency_preview())
-                    fig.canvas.draw()
-                elif event.key == 'up' or event.key == 'down':
-                    self.alpha += 0.05 if event.key == 'up' else -0.05
-                    self.alpha  = np.clip(self.alpha, 0., 1.)
-                    print('Alpha: {}'.format(self.alpha))
-                    plt.imshow(self.get_transparency_preview())
-                    fig.canvas.draw()
-
-            fig.canvas.mpl_connect('key_press_event', press)
-
-            plt.imshow(self.get_transparency_preview())
-            plt.show()
-
+    def change_alpha(self, key):
+        self.alpha += 0.05 if key == 'up' else -0.05
+        self.alpha  = np.clip(self.alpha, 0., 1.)
+        print('Alpha: {}'.format(self.alpha))
+            
     def change_scene(self, new_scene_name):
         if os.path.isdir(new_scene_name):
             print('Changing scene to {}'.format(new_scene_name))
@@ -144,33 +132,41 @@ class StopMotion:
                    '{}/out.mp4'.format(self.scene)]
         subprocess.Popen(command)
 
-    def get_command(self):
-        raw = input()
-        if raw == '': return
-        first_letter = raw.lower()[0]
+    def get_command(self, event):
+        # raw = input()
+        # if raw == '': return
+        # first_letter = raw.lower()[0]
+        self.print_header()
+        sys.stdout.flush()
 
-        if first_letter == 'q':
-            print("exit")
-            sys.exit(0)
-        if first_letter == 'p':
+        # if event.key == 'q':
+        #     print("exit")
+        #     sys.exit(0)
+        if event.key == 'p':
             self.preview()
-        elif first_letter == 's':
+        elif event.key == 'f':
             self.save_frame()
-        elif first_letter == 'v':
+            self.preview()
+        elif event.key == 'v':
             self.view_prev_frame()
-        elif first_letter == 'd':
+        elif event.key == 'd':
             self.delete_frame()
-        elif first_letter == 'r':
+            self.preview()
+        elif event.key == 'r':
             self.render()
-        elif first_letter == 'n':
-            words = raw.split()
-            if len(words) > 1:
-                new_scene_name = words[1]
-            else:
-                new_scene_name = input('Enter a scene name: ')
-                if new_scene_name ==  '': return
+        elif event.key == 'up' or event.key == 'down':
+            self.change_alpha(event.key)
+            self.preview()
+        # elif event.key == 'n':
+        #     words = raw.split()
+        #     if len(words) > 1:
+        #         new_scene_name = words[1]
+        #     else:
+        #         new_scene_name = input('Enter a scene name: ')
+        #         if new_scene_name ==  '': return
 
-            self.change_scene(new_scene_name)
+        #     self.change_scene(new_scene_name)
+
 
     def loop(self):
         while True:
@@ -180,7 +176,7 @@ class StopMotion:
 
 sm = StopMotion()
 try:
-    sm.loop()
+    sm.start_preview()
 except Exception as e:
     print(e)
     sm.canon.exit()
