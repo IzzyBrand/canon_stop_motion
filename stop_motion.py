@@ -19,7 +19,8 @@ class StopMotion:
             print(e)
             print('Failed to connect to camera!')
             self.canon = None
-        self.alpha = 0.95
+        self.alpha = 0.70
+        self.frame_rate = 24
 
     def start_preview(self):
         self.fig, _ = plt.subplots()
@@ -38,7 +39,7 @@ class StopMotion:
             v - view previous photo
             d - delete previous photo
             r - render the photos into a video
-            n <name> - create a new scene. for example "n trip"
+            n - create a new scene. Go to terminal to enter name.
 
             Next image:\t{}
             """.format(self.get_image_name()))
@@ -110,7 +111,11 @@ class StopMotion:
         self.alpha  = np.clip(self.alpha, 0., 1.)
         print('Alpha: {}'.format(self.alpha))
             
-    def change_scene(self, new_scene_name):
+    def change_scene(self, new_scene_name=None):
+        if new_scene_name is None:
+            new_scene_name = input('Enter a scene name: ')
+            if new_scene_name ==  '': return
+
         if os.path.isdir(new_scene_name):
             print('Changing scene to {}'.format(new_scene_name))
             self.scene = new_scene_name
@@ -128,44 +133,32 @@ class StopMotion:
         command = ['ffmpeg',
                    '-i', '{}/%04d.jpg'.format(self.scene),
                    '-c:v', 'libx264',
-                   '-vf', 'fps=25,format=yuv420p',
+                   '-vf', 'fps={},format=yuv420p'.format(self.frame_rate),
                    '{}/out.mp4'.format(self.scene)]
         subprocess.Popen(command)
 
     def get_command(self, event):
-        # raw = input()
-        # if raw == '': return
-        # first_letter = raw.lower()[0]
         self.print_header()
         sys.stdout.flush()
 
-        # if event.key == 'q':
-        #     print("exit")
-        #     sys.exit(0)
         if event.key == 'p':
-            self.preview()
+            pass
         elif event.key == 'f':
             self.save_frame()
-            self.preview()
         elif event.key == 'v':
             self.view_prev_frame()
         elif event.key == 'd':
             self.delete_frame()
-            self.preview()
         elif event.key == 'r':
             self.render()
         elif event.key == 'up' or event.key == 'down':
             self.change_alpha(event.key)
-            self.preview()
-        # elif event.key == 'n':
-        #     words = raw.split()
-        #     if len(words) > 1:
-        #         new_scene_name = words[1]
-        #     else:
-        #         new_scene_name = input('Enter a scene name: ')
-        #         if new_scene_name ==  '': return
+        elif event.key == 'n':
+            self.change_scene()
+        else:
+            return
 
-        #     self.change_scene(new_scene_name)
+        self.preview()
 
 
     def loop(self):
