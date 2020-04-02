@@ -20,7 +20,7 @@ class StopMotion:
             print('Failed to connect to camera!')
             self.canon = None
         self.alpha = 0.70
-        self.frame_rate = 24
+        self.frame_rate = 12
 
     def start_preview(self):
         self.fig, _ = plt.subplots()
@@ -37,7 +37,7 @@ class StopMotion:
             p - preview
             f - tave a frame
             v - view previous photo
-            d - delete previous photo
+            d - delete previous photo. Go to terminal to confirm
             r - render the photos into a video
             n - create a new scene. Go to terminal to enter name.
 
@@ -145,12 +145,15 @@ class StopMotion:
             pass
         elif event.key == 'f':
             self.save_frame()
+            return # we don't want to refresh preview
         elif event.key == 'v':
             self.view_prev_frame()
+            return # we don't want to refresh preview
         elif event.key == 'd':
             self.delete_frame()
         elif event.key == 'r':
             self.render()
+            # we don't want to refresh preview
         elif event.key == 'up' or event.key == 'down':
             self.change_alpha(event.key)
         elif event.key == 'n':
