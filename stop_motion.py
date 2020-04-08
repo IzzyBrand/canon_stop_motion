@@ -21,6 +21,7 @@ class StopMotion:
             self.canon = None
         self.alpha = 0.70
         self.frame_rate = 12
+        self.check_before_delete = True
 
     def start_preview(self):
         self.fig, _ = plt.subplots()
@@ -41,8 +42,10 @@ class StopMotion:
             r - render the photos into a video
             n - create a new scene. Go to terminal to enter name.
 
+            Camera:\t{}
             Next image:\t{}
-            """.format(self.get_image_name()))
+            """.format('Connected' if self.canon else 'Failed',
+                self.get_image_name()))
 
     def get_image_number(self):
         files = glob.glob(self.scene + '/*jpg')
@@ -66,6 +69,10 @@ class StopMotion:
             return None
 
     def save_frame(self):
+        if self.canon is None:
+            print('Cannot save frame. Camera not connected.')
+            return
+
         target = self.get_image_name()
         self.canon.capture_image(target)
         self.N += 1
@@ -73,9 +80,11 @@ class StopMotion:
     def delete_frame(self):
         prev_image_name = self.get_image_name(N=self.N-1)
         if os.path.isfile(prev_image_name):
-            raw = input('Are you sure you want to delete {}? [y/n]\n'.format(prev_image_name))
-            if raw == "" or raw.lower()[0] != 'y':
-                return
+            if self.check_before_delete:
+                raw = input('Are you sure you want to delete {}? [y/n]\n'.format(prev_image_name))
+                if raw == "" or raw.lower()[0] != 'y':
+                    return
+
             os.remove(prev_image_name)
             self.N -= 1
             print("Deleted {}".format(prev_image_name))
@@ -103,7 +112,12 @@ class StopMotion:
         return preview
 
     def preview(self):
-        plt.imshow(self.get_transparency_preview())
+        if self.canon is None:
+            print('Cannot preview. Camera not connected.')
+            plt.imshow(np.zeros([540,960,3])) # show a black screen
+        else:
+            plt.imshow(self.get_transparency_preview())
+
         self.fig.canvas.draw()
 
     def change_alpha(self, key):
@@ -130,11 +144,15 @@ class StopMotion:
             self.N = 0
 
     def render(self):
+        out_filename = '{}/out.mp4'.format(self.scene)
+        if os.path.isfile(out_filename):
+            os.remove(out_filename)
+
         command = ['ffmpeg',
                    '-i', '{}/%04d.jpg'.format(self.scene),
                    '-c:v', 'libx264',
                    '-vf', 'fps={},format=yuv420p'.format(self.frame_rate),
-                   '{}/out.mp4'.format(self.scene)]
+                   out_filename]
         subprocess.Popen(command)
 
     def get_command(self, event):
@@ -145,7 +163,6 @@ class StopMotion:
             pass
         elif event.key == 'f':
             self.save_frame()
-            return # we don't want to refresh preview
         elif event.key == 'v':
             self.view_prev_frame()
             return # we don't want to refresh preview
